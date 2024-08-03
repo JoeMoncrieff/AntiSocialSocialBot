@@ -4,7 +4,7 @@ import sounddevice as sd
 import numpy as np
 from PIL import Image, ImageTk
 
-sx,sy,ex,ey = 176,176,200,200
+sx, sy, ex, ey = 176, 176, 200, 200
 
 root = Tk()
 
@@ -18,12 +18,12 @@ root.wm_attributes("-topmost", True)
 root.wm_attributes("-transparent", True)
 
 # Set the root window background color to a transparent color
-root.config(bd=0,bg="systemTransparent")
+root.config(bd=0, bg="systemTransparent")
 
 
 my_canvas = Canvas(root, width=350, height=350, bg=root['bg'], bd=0)
 my_canvas.pack()
-#my_oval = my_canvas.create_oval(sx, sy, ex, ey, fill=curr_colour, outline=curr_colour)
+# my_oval = my_canvas.create_oval(sx, sy, ex, ey, fill=curr_colour, outline=curr_colour)
 
 photo_arr = []
 fs = PhotoImage(file="Photos/facesilentrs.PNG")
@@ -31,10 +31,10 @@ fo = PhotoImage(file="Photos/faceopenrs.PNG")
 fh = PhotoImage(file="Photos/facehappyrs.PNG")
 fl = PhotoImage(file="Photos/faceloudrs.PNG")
 
-photo_arr.append(fs) #Silent
-photo_arr.append(fo) #Open
-photo_arr.append(fh) #Happy
-photo_arr.append(fl) #Loud
+photo_arr.append(fs) # Silent
+photo_arr.append(fo) # Open
+photo_arr.append(fh) # Happy
+photo_arr.append(fl) # Loud
 
 
 
