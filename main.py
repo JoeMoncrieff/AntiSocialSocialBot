@@ -102,6 +102,8 @@ eyes_elapsed = 0.0
 # eye states 0: open --> 1:slightly closed  --> 2:closed --> 3:slightly closed --> 0: open
 eye_state = 0
 
+
+
 # Start Audio Callback =============================
 def audio_callback(indata, frames, time, status):
 
@@ -196,8 +198,8 @@ def audio_callback(indata, frames, time, status):
     #TODO: - Implement grey out so that background is unaffected
     if t.time() - elapsed >= 2:
         if len(win.my_canvas.find_withtag("filter")) == 0:
-            print("creating filter")
-            win.create_filter("gray",0.2)
+            win.generate_filter("gray",0.3)
+            win.create_filter()
 
     # Eye Stuff here
     time_diff_eyes = t.time() - eyes_elapsed
