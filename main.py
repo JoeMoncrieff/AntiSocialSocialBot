@@ -4,6 +4,7 @@ from tkinter import *
 import sounddevice as sd
 import numpy as np
 from PIL import Image, ImageTk
+from window import Window
 
 
 # TODO: Maybe consider a file to pull from although this might be simpler.
@@ -11,7 +12,7 @@ windows_thresholds = [0.03,0.12,0.35]
 mac_thresholds = [0.002,0.02,0.04 ]
 
 # Change this depending on device
-current_thresholds = mac_thresholds.copy()
+current_thresholds = windows_thresholds.copy()
 
 
 """ 
@@ -31,18 +32,7 @@ canvas_dimension = 350
 
 sx, sy = int(canvas_dimension/2), int(canvas_dimension/2)
 
-root = Tk()
-
-# Hide the root window drag bar and close button
-#root.overrideredirect(True)
-#root.overrideredirect(False)
-
-# Make the root window always on top
-root.wm_attributes("-topmost", True)
-
-# root.wm_attributes("-transparent", "cyan")
-# Set the root window background color to a transparent color
-root.config(bd=0, bg="cyan")
+win = Window(canvas_dimension)
 
 # Helper function to resize images
 def img_resize(img, canv_dim=canvas_dimension):
@@ -86,7 +76,7 @@ fig_arr = []
 fc = Image.open("Photos/Layers/FigureiColour.png")
 fo = Image.open("Photos/Layers/FigureiOutline.png")
 bd = Image.open("Photos/Layers/BoxiDetails.png")
-bs = Image.open("Photos/layers/BoxiSign.png")
+bs = Image.open("Photos/Layers/BoxiSign.png")
 
 fig_arr.append(fc)
 fig_arr.append(fo)
@@ -97,17 +87,17 @@ fig_arr.append(bd)
 
 fig_arr = list(map(img_resize,fig_arr))
 
-# Setting up main body image here
-my_canvas = Canvas(root, width=canvas_dimension, height=canvas_dimension, highlightthickness=0, bg=root['bg'], bd=0)
-my_canvas.pack()
-
 #Initial build of character model
 for img in fig_arr:
-    my_canvas.create_image(sx, sy, image=img, tags="figure")
+    win.my_canvas.create_image(sx, sy, image=img, tags="figure")
+
+filters = []
+grey_filter = ImageTk.PhotoImage(file="Photos/Filters/GreyFilter.png")
+
 
 #Adding open eyes here
-my_canvas.create_image(sx, sy, image=eye_arr[0], tags="eyes")
-my_canvas.create_image(sx, sy, image=mouth_arr[1], tags="mouth")
+win.my_canvas.create_image(sx, sy, image=eye_arr[0], tags="eyes")
+win.my_canvas.create_image(sx, sy, image=mouth_arr[1], tags="mouth")
 
 elapsed = 0.0
 current_state = -1
@@ -149,58 +139,75 @@ def audio_callback(indata, frames, time, status):
     # debug for threshold values
     # print(avrg)
     # print(t.time())
-
+    
     if current_thresholds[0] < avrg < current_thresholds[1] and (t.time() - elapsed >= 0.5 or current_state <= 1):
-        
+        if len(win.my_canvas.find_withtag("filter")) != 0:
+            win.my_canvas.delete("filter")
+
         if current_state != 1:
-            my_canvas.delete('mouth')
-            my_canvas.create_image(sx, sy, image=mouth_arr[1], tags="mouth")
+            win.my_canvas.delete('mouth')
+            win.my_canvas.create_image(sx, sy, image=mouth_arr[1], tags="mouth")
             if current_state == 3:
-                my_canvas.delete('eyes')
-                my_canvas.create_image(sx, sy, image=eye_arr[0], tags="eyes")
+                win.my_canvas.delete('eyes')
+                win.my_canvas.create_image(sx, sy, image=eye_arr[0], tags="eyes")
 
         elapsed = t.time()
         current_state = 1
 
     elif current_thresholds[2] > avrg > current_thresholds[1] and (t.time() - elapsed >= 0.4 or current_state <= 2):
+        if len(win.my_canvas.find_withtag("filter")) != 0:
+            win.my_canvas.delete("filter")
+
         if current_state != 2:
-            my_canvas.delete('mouth')
-            my_canvas.create_image(sx, sy, image=mouth_arr[2], tags="mouth")
+            win.my_canvas.delete('mouth')
+            win.my_canvas.create_image(sx, sy, image=mouth_arr[2], tags="mouth")
             if current_state == 3:
-                my_canvas.delete('eyes')
-                my_canvas.create_image(sx, sy, image=eye_arr[0], tags="eyes")
+                win.my_canvas.delete('eyes')
+                win.my_canvas.create_image(sx, sy, image=eye_arr[0], tags="eyes")
 
         elapsed = t.time()
         current_state = 2
 
     elif avrg >= current_thresholds[2]:
+        if len(win.my_canvas.find_withtag("filter")) != 0:
+            win.my_canvas.delete("filter")
+
         if current_state != 3:
-            my_canvas.delete('mouth')
-            my_canvas.create_image(sx, sy, image=mouth_arr[4], tags="mouth")
-            my_canvas.delete('eyes')
-            my_canvas.create_image(sx, sy, image=es, tags="eyes")
+            win.my_canvas.delete('mouth')
+            win.my_canvas.create_image(sx, sy, image=mouth_arr[4], tags="mouth")
+            win.my_canvas.delete('eyes')
+            win.my_canvas.create_image(sx, sy, image=es, tags="eyes")
 
         eyes_elapsed = t.time()
         elapsed = t.time()
         current_state = 3
 
+
     # If no sound for more than half a second then we return to this face
     elif t.time() - elapsed >= 0.3:
         if current_state == 3:
-            my_canvas.delete('eyes')
-            my_canvas.create_image(sx, sy, image=eye_arr[0], tags="eyes")
+            win.my_canvas.delete('eyes')
+            win.my_canvas.create_image(sx, sy, image=eye_arr[0], tags="eyes")
 
         if current_state != 0:
-            my_canvas.delete('mouth')
-            my_canvas.create_image(sx, sy, image=mouth_arr[0], tags="mouth")
+            win.my_canvas.delete('mouth')
+            win.my_canvas.create_image(sx, sy, image=mouth_arr[0], tags="mouth")
+
+        
         current_state = 0
+    
+    #TODO: - Implement grey out so that background is unaffected
+    if t.time() - elapsed >= 2:
+        if len(win.my_canvas.find_withtag("filter")) == 0:
+            print("creating filter")
+            win.create_filter("gray",0.2)
 
     # Eye Stuff here
     time_diff_eyes = t.time() - eyes_elapsed
     if (time_diff_eyes >= 5 and eye_state == 0) or eye_state > 0:
-        eye_state = eye_blink(eye_state, time_diff_eyes, my_canvas)
+        eye_state = eye_blink(eye_state, time_diff_eyes, win.my_canvas)
 
-    my_canvas.update()
+    win.redraw()
 
 # End Audio Callback =============================
 
@@ -233,21 +240,21 @@ You can run `python3 -m sounddevice to find what channel the input device you ac
 want to use is on.
 """
 
-""" Windows Settings
+# Windows Settings
 stream = sd.InputStream(
         device=1,
         channels=1,
         samplerate=44100.0,
         callback=audio_callback)
-"""
 
-""" Mac Settings """
+
+""" Mac Settings
 stream = sd.InputStream(
         device=0,
         channels=1,
         samplerate=44100.0,
         callback=audio_callback)
-
+"""
 
 with stream:
-    root.mainloop()
+    win.root.mainloop()
