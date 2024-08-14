@@ -1,5 +1,5 @@
 from tkinter import *
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageGrab
 
 
 class Window:
@@ -23,10 +23,17 @@ class Window:
 
 
     def create_filter(self,fill,alpha):
-        new_fill = tuple(map(lambda x: x%255,self.root.winfo_rgb(fill))) + (int(alpha * 255),)
-        img = Image.new('RGBA', (350,350),new_fill)
+        new_fill = tuple(map(lambda x: x % 255,self.root.winfo_rgb(fill))) + (int(alpha * 255),)
+        img = Image.new('RGBA', (1,1),new_fill)
         self.filter = ImageTk.PhotoImage(img)
 
-        #TODO: make it so that the background doesn't get faded
-        self.my_canvas.create_image(self.canvas_dimension/2,self.canvas_dimension/2,image=self.filter,tags='filter')
-        #self.my_canvas.create_rectangle(0,0,350,350,fill=fill)
+        start_x, start_y = self.my_canvas.winfo_rootx(), self.my_canvas.winfo_rooty()
+        pixels = ImageGrab.grab((start_x,start_y,start_x+self.canvas_dimension,start_y+self.canvas_dimension))
+        
+            
+        for x in range(self.canvas_dimension):
+            for y in range(self.canvas_dimension):
+                print(f"rgb data: {pixels.getpixel((x,y))}")        
+                             
+        #TODO make it so that the background doesn't get faded
+        #self.my_canvas.create_image(self.canvas_dimension/2,self.canvas_dimension/2,image=self.filter,tags='filter')

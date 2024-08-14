@@ -91,9 +91,6 @@ fig_arr = list(map(img_resize,fig_arr))
 for img in fig_arr:
     win.my_canvas.create_image(sx, sy, image=img, tags="figure")
 
-filters = []
-grey_filter = ImageTk.PhotoImage(file="Photos/Filters/GreyFilter.png")
-
 
 #Adding open eyes here
 win.my_canvas.create_image(sx, sy, image=eye_arr[0], tags="eyes")
