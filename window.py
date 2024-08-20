@@ -1,8 +1,8 @@
 from tkinter import *
 from PIL import Image, ImageTk, ImageGrab
-import os
-import numpy
-
+import cv2
+import numpy as np
+import time
 
 class Window:
     def __init__(self,canvas_dimension):
@@ -20,41 +20,71 @@ class Window:
         self.my_canvas.pack()
 
         self.filter = None
+        self.voice_background = None
+        self.voice_background_base = None
+        self.voice_background_base_bin = -1
 
     def redraw(self):
         self.root.update_idletasks()
         self.root.update()
 
-
     def create_filter(self):
         self.my_canvas.create_image(self.canvas_dimension/2,self.canvas_dimension/2,image=self.filter,tags='filter')           
        
-    def generate_filter(self,fill,alpha):
-        if not self.filter:
-            new_fill = tuple(map(lambda x: x % 255,self.root.winfo_rgb(fill))) + (int(alpha * 255),)
-
-            self.redraw()
-
-            start_x, start_y = self.my_canvas.winfo_rootx() + self.my_canvas.winfo_x() ,self.my_canvas.winfo_rooty()+ self.my_canvas.winfo_y()
-            print(f"start_x: {start_x}, start_y {start_y}")
-            pixels = ImageGrab.grab((start_x,start_y,start_x+self.canvas_dimension,start_y+self.canvas_dimension))
-            
-            new_bitmap = [[(255,255,255,0)] * self.canvas_dimension for i in range(self.canvas_dimension)]
-            print(f"len(bitmap): {len(new_bitmap)} len(bitmap[0]): {len(new_bitmap[0])}")
-            print(f"pixels.height: {pixels.height} pixels.width {pixels.width}")
-            
+    def generate_filter(self,fill,alpha,file_name):
         
-            for x in range(self.canvas_dimension):
-                for y in range(self.canvas_dimension):
-                    if pixels.getpixel((x,y)) != (0,255,255):
-                        new_bitmap[y][x] = new_fill
-            
-            numpy.save("Photos/Filters/filter.npy", numpy.array(new_bitmap,dtype=numpy.uint8))
-            array = numpy.load("Photos/Filters/filter.npy")
-            image1 = Image.fromarray(array, mode='RGBA')
-            print(f"image1.height: {image1.height} image1.width {image1.width}")
+        new_fill = tuple(map(lambda x: int((x/32896)*255),self.root.winfo_rgb(fill))) + (int(alpha * 255),)
 
-            self.filter = ImageTk.PhotoImage(image = image1, size=(self.canvas_dimension,self.canvas_dimension))
+
+        start_x, start_y = self.my_canvas.winfo_rootx() + self.my_canvas.winfo_x() ,self.my_canvas.winfo_rooty()+ self.my_canvas.winfo_y()
+
+        pixels = ImageGrab.grab((start_x,start_y,start_x+self.canvas_dimension,start_y+self.canvas_dimension))
+        
+        new_bitmap = [[(255,255,255,0)] * self.canvas_dimension for i in range(self.canvas_dimension)]
+    
+        for x in range(self.canvas_dimension):
+            for y in range(self.canvas_dimension):
+                if pixels.getpixel((x,y)) != (0,255,255):
+                    new_bitmap[y][x] = new_fill
+        
+        np.save(f"Photos/Filters/{file_name}.npy", np.array(new_bitmap,dtype=np.uint8))
+        array = np.load(f"Photos/Filters/{file_name}.npy")
+        image1 = Image.fromarray(array, mode='RGBA')
+
+        return ImageTk.PhotoImage(image = image1, size=(self.canvas_dimension,self.canvas_dimension))
                
-        
+    def generate_background_base(self):
+        if not self.voice_background:
+            self.voice_background = self.generate_filter("white",1.0,"background_base")
+            self.voice_background_base = self.generate_filter("white",1.0,"background_base")
 
+    def amplify_background(self,avrg):
+        # scaling_function = base_border + (some_factor) * avrg 
+        scaling_function = int(20 + (60*avrg))
+        
+        if isinstance(self.voice_background_base_bin,int):
+            arr = np.load(f"Photos/Filters/background_base.npy")
+            self.voice_background_base_bin = np.where(arr[..., 3] == 0, 0, 1).astype(np.uint8)
+        
+        kernel_open = np.ones((5,5), np.uint8)
+        kernel = np.ones((scaling_function,scaling_function),np.uint8)
+        
+        
+        opening = self.voice_background_base_bin
+        opening[300:350,0:350] = cv2.morphologyEx(self.voice_background_base_bin[300:350,0:350], cv2.MORPH_OPEN, kernel_open)
+        dilated_img = cv2.dilate(opening,kernel,iterations =1)
+        
+        rgba_img = np.zeros((*dilated_img.shape, 4), dtype=np.uint8)
+        rgba_img[..., 0:3] = (255, 225, 255)  # RGB values stay constant
+        rgba_img[..., 3] = dilated_img * 255  # Alpha channel
+        #Cut out here
+        rgba_img[..., 3] = rgba_img[...,3] - self.voice_background_base_bin * 255
+
+        image1 = Image.fromarray(rgba_img, mode='RGBA')
+        image1 = ImageTk.PhotoImage(image = image1,size = (self.canvas_dimension,self.canvas_dimension))
+        
+        thing_to_delete = self.my_canvas.find_withtag("background")
+        
+        self.my_canvas.create_image(self.canvas_dimension/2,self.canvas_dimension/2,image=image1,tags='background')
+        map(self.my_canvas.delete,thing_to_delete)
+        self.voice_background = image1
