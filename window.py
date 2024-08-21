@@ -33,20 +33,20 @@ class Window:
        
     def generate_filter(self,fill,alpha,file_name):
         
-        new_fill = tuple(map(lambda x: int((x/32896)*255),self.root.winfo_rgb(fill))) + (int(alpha * 255),)
-
+        new_fill = np.array(tuple(map(lambda x: int((x/(32896*2))*255),self.root.winfo_rgb(fill))) + (int(alpha * 255),)).astype(np.uint8)
 
         start_x, start_y = self.my_canvas.winfo_rootx() + self.my_canvas.winfo_x() ,self.my_canvas.winfo_rooty()+ self.my_canvas.winfo_y()
 
         pixels = ImageGrab.grab((start_x,start_y,start_x+self.canvas_dimension,start_y+self.canvas_dimension))
-        
-        new_bitmap = [[(255,255,255,0)] * self.canvas_dimension for i in range(self.canvas_dimension)]
-    
-        for x in range(self.canvas_dimension):
-            for y in range(self.canvas_dimension):
-                if pixels.getpixel((x,y)) != (0,255,255):
-                    new_bitmap[y][x] = new_fill
-        
+
+        #Padding tocreate an rgbA array
+        pixels = np.pad(np.asarray(pixels).reshape((self.canvas_dimension,self.canvas_dimension,3)), ((0,0),(0,0),(0,1)), "constant")
+
+        mask = (pixels[...,0] == 0) & (pixels[...,1] == 255) & (pixels[...,2] == 255) & (pixels[...,3] == 0)
+
+        new_bitmap = np.where(mask[...,None], [255,255,255,0], new_fill).astype(np.uint8)
+
+              
         np.save(f"Photos/Filters/{file_name}.npy", np.array(new_bitmap,dtype=np.uint8))
         array = np.load(f"Photos/Filters/{file_name}.npy")
         image1 = Image.fromarray(array, mode='RGBA')
@@ -54,8 +54,7 @@ class Window:
         return ImageTk.PhotoImage(image = image1, size=(self.canvas_dimension,self.canvas_dimension))
                
     def generate_background_base(self):
-        if not self.voice_background:
-            self.voice_background = self.generate_filter("white",1.0,"background_base")
+        if not self.voice_background_base:
             self.voice_background_base = self.generate_filter("white",1.0,"background_base")
 
     def amplify_background(self,avrg):
@@ -69,7 +68,6 @@ class Window:
         kernel_open = np.ones((5,5), np.uint8)
         kernel = np.ones((scaling_function,scaling_function),np.uint8)
         
-        
         opening = self.voice_background_base_bin
         opening[300:350,0:350] = cv2.morphologyEx(self.voice_background_base_bin[300:350,0:350], cv2.MORPH_OPEN, kernel_open)
         dilated_img = cv2.dilate(opening,kernel,iterations =1)
@@ -77,7 +75,7 @@ class Window:
         rgba_img = np.zeros((*dilated_img.shape, 4), dtype=np.uint8)
         rgba_img[..., 0:3] = (255, 225, 255)  # RGB values stay constant
         rgba_img[..., 3] = dilated_img * 255  # Alpha channel
-        #Cut out here
+        #Cut out base image here so it doesn't overlap with the character
         rgba_img[..., 3] = rgba_img[...,3] - self.voice_background_base_bin * 255
 
         image1 = Image.fromarray(rgba_img, mode='RGBA')

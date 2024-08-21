@@ -149,12 +149,9 @@ def audio_callback(indata, frames, time, status):
     # Fancy indexing with mapping creates a (necessary!) copy:
     avrg = float(np.sum(np.abs(indata)))/float(np.size(indata))
     
-    # debug for threshold values
-    # print(avrg)
-    # print(t.time())
 
     # TODO: amplify voice here :)
-    if not regular and win.voice_background:
+    if not regular and win.voice_background_base:
         win.amplify_background(avrg)
         background_voice_elapsed = curr_time
 
